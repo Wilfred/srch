@@ -24,18 +24,50 @@
 
 ;;; Code:
 
-;; other names: sniffer? sherlock? finder?
+;; other names: sniffer? sherlock? finder? rummage? frisk? seek?
+;; scour? forage?
 
 (require 'lv)
+(require 'f)
+(require 'dash)
+(autoload 'projectile-project-root "projectile")
 
-(defvar srch--tool "ag")
-(defvar srch--tools (list "ag" "rg" "git-grep"))
+(defvar srch--settings
+  '(:tools
+    (:options ("ag" "rg" "git-grep") :value "ag")
+    :case
+    (:options ("auto" "match-case" "ignore-case") :value "auto")
+    :directory nil))
 
 (defun srch--prompt-header ()
-  (lv-message "Tool: %s [C-c t]
-Directory: %s
-" (srch--format-list srch--tool srch--tools)
-"foo"))
+  (let* ((tool
+          (format "%s %s [C-c t]"
+                  (propertize "Tool:" 'face 'minibuffer-prompt)
+                  (-> srch--settings
+                      (plist-get :tools)
+                      (plist-get :value))))
+         (dir
+          (format "%s %s [C-c f]"
+                  (propertize "Directory:" 'face 'minibuffer-prompt)
+                  (plist-get srch--settings :directory)))
+         (file-types (propertize "File types:" 'face 'minibuffer-prompt)))
+    (lv-message "%s
+%s
+%s %s [C-c t] Case: [sensitive|insensitive|auto] Syntax: [literal string] \n"
+                tool
+                dir
+                file-types
+                "TODO")))
+
+(defun srch--set-directory ()
+  (interactive)
+  (lv-delete-window)
+  (let* ((current (plist-get srch--settings :directory))
+         (new (read-directory-name "Base directory: "
+                                   current)))
+    (plist-put srch--settings :directory
+               (f-abbrev (f-slash new))))
+  (srch--prompt-header))
 
 (defun srch--format-list (current options)
   (let ((fontified-options
@@ -48,27 +80,32 @@ Directory: %s
 
 (defun srch--cycle-tool ()
   (interactive)
-  (setq srch--tool
-        (nth (mod (1+ (-elem-index srch--tool srch--tools))
-                  (length srch--tools))
-             srch--tools))
+  (let* ((tool-settings (plist-get srch--settings :tools))
+         (tools (plist-get tool-settings :options))
+         (current (plist-get tool-settings :value)))
+    (plist-put
+     tool-settings :value
+     (nth (mod (1+ (-elem-index current tools))
+               (length tools))
+          tools)))
   (srch--prompt-header))
 
 (defvar srch-minibuffer-map
   (let ((keymap (make-sparse-keymap)))
     (set-keymap-parent keymap minibuffer-local-map)
     (define-key keymap (kbd "C-c t") #'srch--cycle-tool)
+    (define-key keymap (kbd "C-c f") #'srch--set-directory)
     keymap))
-
-(srch-prompt)
 
 (defun srch-prompt ()
   (interactive)
+  (plist-put srch--settings :directory
+             (f-abbrev (projectile-project-root)))
   (srch--prompt-header)
   (condition-case err
       (let ((search-term (read-from-minibuffer
-                          "Search for: "
-                          "foo"
+                          "Search term: "
+                          nil
                           srch-minibuffer-map)))
         (lv-delete-window)
         search-term)
