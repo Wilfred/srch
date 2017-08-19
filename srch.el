@@ -39,6 +39,12 @@
     (:options ("auto" "match-case" "ignore-case") :value "auto")
     :directory nil))
 
+(defun srch--propertize-option (pretty-name settings-key key)
+  (format "%s %s %s"
+          (propertize (concat pretty-name ":") 'face 'minibuffer-prompt)
+          (plist-get srch--settings settings-key)
+          (propertize (format "C-c %s" key) 'face 'font-lock-string-face)))
+
 (defun srch--prompt-header ()
   (let* ((tool
           (format "%s %s [C-c t]"
@@ -47,17 +53,48 @@
                       (plist-get :tools)
                       (plist-get :value))))
          (dir
-          (format "%s %s [C-c f]"
-                  (propertize "Directory:" 'face 'minibuffer-prompt)
-                  (plist-get srch--settings :directory)))
-         (file-types (propertize "File types:" 'face 'minibuffer-prompt)))
-    (lv-message "%s
+          (srch--propertize-option "Folder" :directory "f"))
+         (file-types (srch--propertize-option "File types" :types "t"))
+         (hidden (srch--propertize-option "Hidden" :hidden "h"))
+         (ignores (srch--propertize-option "VCS-Ignores" :ignores "i"))
+         
+         (summary (format "%s
 %s
-%s %s [C-c t] Case: [sensitive|insensitive|auto] Syntax: [literal string] \n"
-                tool
-                dir
-                file-types
-                "TODO")))
+%s %s %s
+Case: [sensitive|insensitive|auto] Syntax: [literal string] \n---"
+                          tool dir file-types hidden ignores))
+         )
+    (setq wh/s summary)
+    (lv-message summary)))
+
+wh/s
+
+(lv-message "Tool:
+  git-grep [C-c t]
+
+Files:
+  ~/projects/srch/ [C-c f]
+  all file types [C-c t]
+  skipping files in .gitignore, skipping dotfiles
+
+Search syntax:
+  literal string [C-c s]
+  auto case [C-c c]
+---")
+
+(setq srch--opts
+      '("Tool:"
+        ((:func srch--cycle-tool))))
+
+(defun srch--choose-tool ()
+  (interactive)
+  (message "interactive: %S" (called-interactively-p 'any)))
+
+(srch--choose-tool)
+
+(read-string "Search term: ")
+(lv-message "")
+(lv-delete-window)
 
 (defun srch--set-directory ()
   (interactive)
