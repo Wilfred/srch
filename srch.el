@@ -67,8 +67,6 @@ Case: [sensitive|insensitive|auto] Syntax: [literal string] \n---"
     (setq wh/s summary)
     (lv-message summary)))
 
-wh/s
-
 (lv-message "Tool:
   git-grep [C-c t]
 
@@ -90,9 +88,6 @@ Search syntax:
   (interactive)
   (message "interactive: %S" (called-interactively-p 'any)))
 
-(srch--choose-tool)
-
-(read-string "Search term: ")
 (lv-message "")
 (lv-delete-window)
 
