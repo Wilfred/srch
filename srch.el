@@ -144,5 +144,63 @@ Search syntax:
     (quit
      (lv-delete-window))))
 
+(defvar srch--debug-buffer
+  nil)
+
+(defun srch--buffer-name (search-term directory)
+  "Return a buffer name formatted according to srch conventions."
+  (setq directory (f-abbrev directory))
+  (format "*srch: %s %s*" search-term directory))
+
+(defun srch--clear-buffer (buffer)
+  "Delete the contents of BUFFER."
+  ;; TODO: stop an associated process.
+  (with-current-buffer buffer
+    (let ((inhibit-read-only t))
+      (widen)
+      (delete-region (point-min) (point-max)))))
+
+
+(defun srch--create-results-buffer (search-term command directory)
+  "Create a buffer for showing search results."
+  (let* ((buffer-name (srch--buffer-name search-term directory))
+         (buffer (get-buffer-create buffer-name)))
+    (srch--clear-buffer buffer)
+    
+    (with-current-buffer buffer
+      (setq buffer-read-only t)
+      (setq default-directory directory)
+      ;; (ag-mode)
+      ;; (setq ag--command command)
+      ;; (setq ag--search-term search-term)
+      ;; (setq ag--remaining-output "")
+      ;; (setq ag--line-match-total 0)
+      ;; (setq ag--file-match-total 0)
+      )
+    buffer))
+
+(defun srch--rg ()
+  (interactive)
+  (let* ((search-term (read-string "Search term: "))
+         (command (format "rg %s" search-term))
+         (directory default-directory)
+         (results-buffer (srch--create-results-buffer
+                          search-term command directory)))
+    (unless srch--debug-buffer
+      (setq srch--debug-buffer (get-buffer-create "*srch debug*")))
+    ;; Write the raw command in a debug buffer, so maintainers can
+    ;; replicate bugs. Inspired by `racer-debug'.
+    (srch--clear-buffer srch--debug-buffer)
+    (with-current-buffer srch--debug-buffer
+      (let ((inhibit-read-only t))
+        (setq default-directory directory)
+        (insert
+         "-- directory ---\n" directory
+         "\n--- command ---\n" command
+         "\n"))
+      (setq buffer-read-only t))
+    
+    ))
+
 (provide 'srch)
 ;;; srch.el ends here
